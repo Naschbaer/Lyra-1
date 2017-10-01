@@ -167,6 +167,7 @@ class Z3Types:
         self.generic3_tv2 = type_sort.generic3_tv2
         self.generic3_tv3 = type_sort.generic3_tv3
         self.generic3_func = type_sort.generic3_func
+        self.issubst = Function('issubst', type_sort, type_sort, type_sort, type_sort, BoolSort())
         self.subst = Function('subst', type_sort, type_sort, type_sort, type_sort)
         self.upper = Function('upper', type_sort, type_sort)
 
@@ -207,12 +208,27 @@ class Z3Types:
         axioms = []
         what = self.new_z3_const('what', self.type_sort)
         by = self.new_z3_const('by', self.type_sort)
+        in_ = self.new_z3_const('in', self.type_sort)
+        is_ = self.new_z3_const('is', self.type_sort)
         for c in tree.all_children():
             literal = c.get_literal()
-            subst_literal = c.get_literal(lambda x: self.subst(x, what, by))
-            axiom = ForAll([what, by] + c.quantified(), self.subst(literal, what, by) == If(literal == what, by, subst_literal),
-                           patterns=[self.subst(literal, what, by)])
+            is_literal = c.get_literal_with_args(is_)
+            args_subst = [self.issubst(arg, what, by, is_arg) if isinstance(arg, DatatypeRef) else arg == is_arg for (is_arg, arg) in zip(c.get_quantified_with_args(is_), c.quantified())]
+            axiom = ForAll([what, by, is_] + c.quantified(), self.issubst(literal, what, by, is_) == Or(And(is_ == by, literal == what),
+                                                                                                        And(what != literal, is_ == is_literal, *args_subst)),
+                           patterns=[self.issubst(literal, what, by, is_)])
             axioms.append(axiom)
+
+            in_literal = c.get_literal_with_args(in_)
+            args_subst = [self.issubst(in_arg, what, by, arg) if isinstance(arg, DatatypeRef) else arg == in_arg for (in_arg, arg) in
+                          zip(c.get_quantified_with_args(in_), c.quantified())]
+            axiom = ForAll([what, by, in_] + c.quantified(),
+                           self.issubst(in_, what, by, literal) == Or(And(by == literal, what == in_),
+                                                                      And(what != in_, in_ == in_literal, *args_subst)),
+                           patterns=[self.issubst(in_, what, by, literal)])
+            axioms.append(axiom)
+        subst_def = ForAll([in_, what, by], self.issubst(in_, what, by, self.subst(in_, what, by)), patterns=[self.subst(in_, what, by)])
+        axioms.append(subst_def)
         for i in range(3):
             args = []
             for j in range(i + 1):

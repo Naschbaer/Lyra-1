@@ -75,6 +75,16 @@ class ClassNode:
                 args.append(getattr(self.type_sort, arg)(var))
             return constr(*args)
 
+    def get_quantified_with_args(self, var):
+        if isinstance(self.name, str):
+            return []
+        else:
+            constr = getattr(self.type_sort, self.name[0])
+            args = []
+            for arg in self.name[1:]:
+                args.append(getattr(self.type_sort, arg)(var))
+            return args
+
     def quantified(self):
         """
         Returns a list of Z3 variables, one for each parameter of this type.
