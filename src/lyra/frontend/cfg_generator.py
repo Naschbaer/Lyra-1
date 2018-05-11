@@ -566,7 +566,7 @@ class CFGVisitor(ast.NodeVisitor):
         cfg_factory = CFGFactory(self._id_gen)
 
         for child in body:
-            if isinstance(child, (ast.AnnAssign, ast.Expr, ast.Raise, ast.ImportFrom)):
+            if isinstance(child, (ast.AnnAssign, ast.Expr, ast.Raise, ast.ImportFrom, ast.Assign)):
                 cfg_factory.add_stmts(self.visit(child, types))
             elif isinstance(child, ast.If):
                 cfg_factory.complete_basic_block()
